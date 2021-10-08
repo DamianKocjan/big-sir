@@ -14,7 +14,6 @@ export type FinderEvent =
   | { type: 'ICONS' }
   | { type: 'DETAILS' }
   | DirectoryChangedEvent;
-
 const finderMachine = createMachine<Context, FinderEvent>(
   {
     id: 'finder',

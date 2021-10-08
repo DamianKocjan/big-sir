@@ -36,7 +36,6 @@ const SideBarItems: Record<string, SidebarItem> = {
 
 const Finder: FC = () => {
   const [current, send] = useMachine(finderMachine);
-  // const { current: currentParent } = useAppContext();
   const [activeFolder, setActiveFolder] = useState('personal');
   const themeContext = useContext(ThemeContext);
   const files = getDirectoryContents(
@@ -45,7 +44,6 @@ const Finder: FC = () => {
   const isIconView = current.matches('icons');
   const isDetailView = current.matches('details');
   const isListView = current.matches('lists');
-  // const isDark = currentParent.context.mode === 'dark';
 
   return (
     <Wrapper>

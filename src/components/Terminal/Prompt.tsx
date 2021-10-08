@@ -2,38 +2,29 @@ import React, { FC, useCallback, useEffect, useRef } from 'react';
 import styled from 'styled-components/macro';
 import { Command, Context, TerminalEvent } from './terminal.machine';
 import { useAppContext } from '../../AppContext';
-import { View } from '../Terminal';
 import autocomplete from '../../utils/autocomplete';
 import { getFileContents } from '../../utils';
-import { Event, EventData, SCXML, SingleOrArray, State } from 'xstate';
+import { useTerminalContext } from './TerminalContext';
+import { useService } from '@xstate/react';
 
 const Prompt: FC<{
   isTerminalFocused: boolean;
-  setView: React.Dispatch<React.SetStateAction<View>>;
   setFileContent: React.Dispatch<React.SetStateAction<string>>;
-  currentParent: State<Context, TerminalEvent, any, any>;
-  sendParent: (
-    event: SingleOrArray<Event<TerminalEvent>> | SCXML.Event<TerminalEvent>,
-    payload?: EventData | undefined
-  ) => State<Context, TerminalEvent, any, any>;
-}> = ({
-  isTerminalFocused,
-  setView,
-  setFileContent,
-  currentParent: current,
-  sendParent: send,
-}) => {
+}> = ({ isTerminalFocused, setFileContent }) => {
+  const service = useTerminalContext();
+  const [state, send] = useService<Context, TerminalEvent>(service);
+
   const { send: sendParent } = useAppContext();
-  const { currentCommand, keysCurrentlyPressed } = current.context;
-  const stateRef = useRef(current.context);
+  const { currentCommand, keysCurrentlyPressed } = state.context;
+  const stateRef = useRef(state.context);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const commandRef = useRef<string | null>(null);
 
   useEffect(() => {
-    stateRef.current = current.context;
+    stateRef.current = state.context;
     if (
-      current.history?.event?.type === 'INCREMENT_HISTORY' ||
-      current.history?.event?.type === 'DECREMENT_HISTORY'
+      state.history?.event?.type === 'INCREMENT_HISTORY' ||
+      state.history?.event?.type === 'DECREMENT_HISTORY'
     ) {
       textAreaRef.current!.value = currentCommand;
       commandRef.current = currentCommand;
@@ -204,9 +195,12 @@ const Prompt: FC<{
                   output,
                   cwd: stateRef.current.cwd,
                 };
-                send({ type: 'ADD_COMMAND', payload: { command } });
-                setView('nvim');
+                send({
+                  type: 'CHANGE_MODE',
+                  payload: { mode: 'nvim', command },
+                });
                 setFileContent(nvimInput);
+                return;
               } else {
                 displayMessage(
                   currentCommand,
@@ -289,17 +283,22 @@ const Prompt: FC<{
         window.removeEventListener('keyup', handleKeyUp);
       };
     }
-  }, [isTerminalFocused, send, setFileContent, setView, sendParent]);
+  }, [isTerminalFocused, send, setFileContent, sendParent]);
 
   return (
     <Wrapper>
       <HiddenTextArea
         ref={textAreaRef}
         onChange={(e) => {
-          commandRef.current = e.target.value;
+          // for some reason a \n appears after exiting vim
+          const command = e.target.value?.replace(/(\r\n|\n|\r)/gm, '');
+          commandRef.current = command;
+          if (textAreaRef.current) {
+            textAreaRef.current.value = command;
+          }
           send({
             type: 'SET_CURRENT_COMMAND',
-            payload: { command: e.target.value },
+            payload: { command },
           });
         }}
         onBlur={() => {
@@ -308,7 +307,7 @@ const Prompt: FC<{
           }
         }}
       />
-      {current.context.commands.map((line, i) => {
+      {state.context.commands.map((line, i) => {
         const { output, cwd } = line;
         return (
           <React.Fragment key={i}>
@@ -321,7 +320,7 @@ const Prompt: FC<{
         );
       })}
       <Line>
-        <User>[{current.context.cwd}]$&nbsp;</User>
+        <User>[{state.context.cwd}]$&nbsp;</User>
         <Input>
           {currentCommand}
           {isTerminalFocused && (

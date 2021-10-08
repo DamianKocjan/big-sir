@@ -3,6 +3,7 @@ import React, { FC, useContext } from 'react';
 import { Event, EventData, SCXML, SingleOrArray, State } from 'xstate';
 import appMachine, { Context, AppEvent } from './app.machine';
 
+// TODO: refactor to only send service as value
 interface AppContextValues {
   current: State<Context, AppEvent, any, any>;
   send: (
@@ -19,7 +20,7 @@ const AppContext = React.createContext<AppContextValues>({
 const useAppContext = () => useContext(AppContext);
 
 const AppProvider: FC = ({ children }) => {
-  const [current, send] = useMachine(appMachine, { devTools: true });
+  const [current, send] = useMachine(appMachine);
 
   return (
     <AppContext.Provider value={{ current, send }}>

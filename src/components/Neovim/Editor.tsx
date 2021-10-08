@@ -4,7 +4,9 @@ import { Controlled as CodeMirror } from 'react-codemirror2';
 import ModeLine from './ModeLine';
 import CommandLine from './CommandLine';
 import useEditorState from '../../hooks/useEditorState';
-import { View } from '../Terminal';
+import { useTerminalContext } from '../Terminal/TerminalContext';
+import { useService } from '@xstate/react';
+import { Context, TerminalEvent } from '../Terminal/terminal.machine';
 require('codemirror/mode/htmlmixed/htmlmixed');
 require('codemirror/keymap/vim');
 
@@ -18,8 +20,9 @@ const options = {
 const Editor: FC<{
   isTerminalFocused: boolean;
   fileContent: string;
-  setView: React.Dispatch<React.SetStateAction<View>>;
-}> = ({ isTerminalFocused, fileContent, setView }) => {
+}> = ({ isTerminalFocused, fileContent }) => {
+  const service = useTerminalContext();
+  const [, send] = useService<Context, TerminalEvent>(service);
   const [state, dispatch] = useEditorState();
   const [code, setCode] = useState(fileContent);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,12 +43,15 @@ const Editor: FC<{
   }, [isTerminalFocused]);
 
   useEffect(() => {
-    setTimeout(() => {
+    const to = setTimeout(() => {
       if (ref.current) {
         const scrollHeight = ref.current.scrollHeight;
         ref.current.scrollTo(0, scrollHeight);
       }
     }, 3000);
+    return () => {
+      clearTimeout(to);
+    };
   }, []);
 
   useEffect(() => {
@@ -61,7 +67,7 @@ const Editor: FC<{
       } else if (stateRef.current.mode === 'command') {
         if (key === 'Enter') {
           if (stateRef.current.command === ':q') {
-            setView('terminal');
+            send({ type: 'CHANGE_MODE', payload: { mode: 'terminal' } });
           }
           commandRef.current = '';
           if (commandTextAreaRef.current) {
@@ -99,8 +105,7 @@ const Editor: FC<{
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dispatch, send]);
 
   return (
     <>

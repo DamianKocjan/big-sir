@@ -1,19 +1,26 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import useMutationObserver from '@rooks/use-mutation-observer';
+import { useService } from '@xstate/react';
 import styled from 'styled-components/macro';
 import Neovim from '../../components/Neovim';
 import Prompt from './Prompt';
 import useIsFocused from '../../hooks/useIsFocused';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import { formatDate } from '../../utils';
-import { useMachine } from '@xstate/react';
-import terminalMachine from './terminal.machine';
+import { Context, TerminalEvent } from './terminal.machine';
+import { TerminalProvider, useTerminalContext } from './TerminalContext';
 
-export type View = 'terminal' | 'nvim';
-
+const TerminalWrapper = () => {
+  return (
+    <TerminalProvider>
+      <Terminal />
+    </TerminalProvider>
+  );
+};
 const Terminal: FC = () => {
-  const [view, setView] = useState<View>('terminal');
-  const [current, send] = useMachine(terminalMachine);
+  const service = useTerminalContext();
+  const [state] = useService<Context, TerminalEvent>(service);
+  const { mode } = state.context;
   const [fileContent, setFileContent] = useState('');
   const [lastLogin, setLastLogin] = useLocalStorage(
     'lastLogin',
@@ -26,8 +33,7 @@ const Terminal: FC = () => {
     return () => {
       setLastLogin(formatDate(new Date()));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setLastLogin]);
 
   const callback = () => {
     if (consoleRef.current) {
@@ -40,10 +46,11 @@ const Terminal: FC = () => {
 
   useMutationObserver(consoleRef, callback);
 
+console.log({mode})
   return (
     <Wrapper ref={ref}>
       <TopBar className="action-bar" />
-      {view === 'terminal' && (
+      {mode === 'terminal' && (
         <Console ref={consoleRef}>
           <div
             style={{
@@ -56,21 +63,14 @@ const Terminal: FC = () => {
             <Message>{`View resume at /home/personal/Resume.js (ex: nvim home/personal/Resume.js)`}</Message>
             <Prompt
               isTerminalFocused={isFocused}
-              setView={setView}
               setFileContent={setFileContent}
-              currentParent={current}
-              sendParent={send}
             ></Prompt>
           </div>
         </Console>
       )}
-      {view === 'nvim' && (
+      {mode === 'nvim' && (
         <Console>
-          <Neovim
-            fileContent={fileContent}
-            setView={setView}
-            isTerminalFocused={true}
-          />
+          <Neovim fileContent={fileContent} isTerminalFocused={true} />
         </Console>
       )}
     </Wrapper>
@@ -100,4 +100,4 @@ const Wrapper = styled.div`
   height: 100%;
 `;
 
-export default Terminal;
+export default TerminalWrapper;

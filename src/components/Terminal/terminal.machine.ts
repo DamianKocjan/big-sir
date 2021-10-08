@@ -3,6 +3,7 @@ import { assign, createMachine } from 'xstate';
 import fileDirectory, { Contents } from '../../shared/fileDirectory';
 import getDirectoryContents from '../../utils/getDirectoryContents';
 
+export type Mode = 'terminal' | 'nvim';
 export type CommandType = 'real' | 'fake';
 export interface Command {
   input: string;
@@ -18,10 +19,15 @@ export interface Context {
   currentCommand: string;
   cwd: string;
   cwdContents: Contents;
+  mode: Mode;
 }
 type AddCommandEvent = {
   type: 'ADD_COMMAND';
   payload: { command: Command };
+};
+type ChangeModeEvent = {
+  type: 'CHANGE_MODE';
+  payload: { mode: Mode; command?: Command };
 };
 type ClearEvent = {
   type: 'CLEAR';
@@ -52,6 +58,7 @@ type SetCurrentCommandEvent = {
 export type TerminalEvent =
   | AddCommandEvent
   | ClearEvent
+  | ChangeModeEvent
   | ChangeDirectoryEvent
   | DecrementHistoryEvent
   | IncrementHistoryEvent
@@ -76,7 +83,6 @@ const config = {
           ? context.index + 1
           : context.index;
       return {
-        ...context,
         index: newIndex,
         historyIndex: newIndex,
         commands: [
@@ -86,9 +92,16 @@ const config = {
         currentCommand: '',
       };
     }),
-    clear: assign<Context, TerminalEvent>((context) => {
+    changeMode: assign<Context, TerminalEvent>((_, event) => {
       return {
-        ...context,
+        mode: (event as ChangeModeEvent).payload.mode,
+        ...((event as ChangeModeEvent).payload.command
+          ? { command: (event as ChangeModeEvent).payload.command }
+          : {}),
+      };
+    }),
+    clear: assign<Context, TerminalEvent>(() => {
+      return {
         index: 0,
         historyIndex: 0,
         commands: [],
@@ -136,12 +149,9 @@ const config = {
       }
 
       if (typeof newCwdContents === 'string') {
-        return {
-          ...context,
-        };
+        return context;
       }
       return {
-        ...context,
         cwd: newCwd,
         cwdContents: newCwdContents,
       };
@@ -151,7 +161,6 @@ const config = {
       const newHistoryIndex =
         context.historyIndex - 1 < 0 ? 0 : context.historyIndex - 1;
       return {
-        ...context,
         historyIndex: newHistoryIndex,
         currentCommand: realCommands[newHistoryIndex]?.input ?? '',
       };
@@ -163,14 +172,12 @@ const config = {
           ? context.commands.length
           : context.historyIndex + 1;
       return {
-        ...context,
         historyIndex: newHistoryIndex,
         currentCommand: realCommands[newHistoryIndex]?.input ?? '',
       };
     }),
     keyDown: assign<Context, TerminalEvent>((context, event) => {
       return {
-        ...context,
         keysCurrentlyPressed: [
           ...filterDuplicates(
             context.keysCurrentlyPressed,
@@ -186,22 +193,19 @@ const config = {
       } = event as KeyUpEvent;
       if (key === 'Meta') {
         return {
-          ...context,
           keysCurrentlyPressed: [],
         };
       }
 
       return {
-        ...context,
         keysCurrentlyPressed: filterDuplicates(
           context.keysCurrentlyPressed,
           key
         ),
       };
     }),
-    setCurrentCommand: assign<Context, TerminalEvent>((context, event) => {
+    setCurrentCommand: assign<Context, TerminalEvent>((_, event) => {
       return {
-        ...context,
         currentCommand: (event as SetCurrentCommandEvent).payload.command,
       };
     }),
@@ -220,14 +224,17 @@ const appMachine = createMachine<Context, TerminalEvent, any>(
       currentCommand: '',
       cwd: '/',
       cwdContents: fileDirectory['/'].contents,
+      mode: 'terminal',
     },
-    strict: true,
     on: {
       ADD_COMMAND: {
         actions: ['addCommand'],
       },
       CLEAR: {
         actions: ['clear'],
+      },
+      CHANGE_MODE: {
+        actions: ['changeMode'],
       },
       CHANGE_DIRECTORY: {
         actions: ['changeDirectory'],
