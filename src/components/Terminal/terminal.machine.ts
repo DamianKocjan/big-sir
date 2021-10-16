@@ -19,6 +19,7 @@ export interface Context {
   currentCommand: string;
   cwd: string;
   cwdContents: Contents;
+  fileContent: string;
   mode: Mode;
 }
 type AddCommandEvent = {
@@ -27,7 +28,7 @@ type AddCommandEvent = {
 };
 type ChangeModeEvent = {
   type: 'CHANGE_MODE';
-  payload: { mode: Mode; command?: Command };
+  payload: { mode: Mode; command?: Command; fileContent?: string };
 };
 type ClearEvent = {
   type: 'CLEAR';
@@ -97,6 +98,9 @@ const config = {
         mode: (event as ChangeModeEvent).payload.mode,
         ...((event as ChangeModeEvent).payload.command
           ? { command: (event as ChangeModeEvent).payload.command }
+          : {}),
+        ...((event as ChangeModeEvent).payload.fileContent
+          ? { fileContent: (event as ChangeModeEvent).payload.fileContent }
           : {}),
       };
     }),
@@ -225,6 +229,7 @@ const appMachine = createMachine<Context, TerminalEvent, any>(
       cwd: '/',
       cwdContents: fileDirectory['/'].contents,
       mode: 'terminal',
+      fileContent: '',
     },
     on: {
       ADD_COMMAND: {

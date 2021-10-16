@@ -19,12 +19,11 @@ const options = {
 
 const Editor: FC<{
   isTerminalFocused: boolean;
-  fileContent: string;
-}> = ({ isTerminalFocused, fileContent }) => {
+}> = ({ isTerminalFocused }) => {
   const service = useTerminalContext();
-  const [, send] = useService<Context, TerminalEvent>(service);
+  const [{ context }, send] = useService<Context, TerminalEvent>(service);
   const [state, dispatch] = useEditorState();
-  const [code, setCode] = useState(fileContent);
+  const [code, setCode] = useState(context.fileContent);
   const ref = useRef<HTMLDivElement>(null);
   const commandTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const commandRef = useRef<string | null>(null);

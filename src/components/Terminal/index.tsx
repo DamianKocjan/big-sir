@@ -21,7 +21,6 @@ const Terminal: FC = () => {
   const service = useTerminalContext();
   const [state] = useService<Context, TerminalEvent>(service);
   const { mode } = state.context;
-  const [fileContent, setFileContent] = useState('');
   const [lastLogin, setLastLogin] = useLocalStorage(
     'lastLogin',
     formatDate(new Date())
@@ -46,7 +45,6 @@ const Terminal: FC = () => {
 
   useMutationObserver(consoleRef, callback);
 
-console.log({mode})
   return (
     <Wrapper ref={ref}>
       <TopBar className="action-bar" />
@@ -63,14 +61,13 @@ console.log({mode})
             <Message>{`View resume at /home/personal/Resume.js (ex: nvim home/personal/Resume.js)`}</Message>
             <Prompt
               isTerminalFocused={isFocused}
-              setFileContent={setFileContent}
             ></Prompt>
           </div>
         </Console>
       )}
       {mode === 'nvim' && (
         <Console>
-          <Neovim fileContent={fileContent} isTerminalFocused={true} />
+          <Neovim isTerminalFocused={true} />
         </Console>
       )}
     </Wrapper>

@@ -9,8 +9,7 @@ import { useService } from '@xstate/react';
 
 const Prompt: FC<{
   isTerminalFocused: boolean;
-  setFileContent: React.Dispatch<React.SetStateAction<string>>;
-}> = ({ isTerminalFocused, setFileContent }) => {
+}> = ({ isTerminalFocused }) => {
   const service = useTerminalContext();
   const [state, send] = useService<Context, TerminalEvent>(service);
 
@@ -197,9 +196,8 @@ const Prompt: FC<{
                 };
                 send({
                   type: 'CHANGE_MODE',
-                  payload: { mode: 'nvim', command },
+                  payload: { mode: 'nvim', fileContent: nvimInput, command },
                 });
-                setFileContent(nvimInput);
                 return;
               } else {
                 displayMessage(
@@ -283,7 +281,7 @@ const Prompt: FC<{
         window.removeEventListener('keyup', handleKeyUp);
       };
     }
-  }, [isTerminalFocused, send, setFileContent, sendParent]);
+  }, [isTerminalFocused, send, sendParent]);
 
   return (
     <Wrapper>

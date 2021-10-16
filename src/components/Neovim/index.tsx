@@ -5,8 +5,7 @@ import Editor from './Editor';
 type EditorState = 'loading' | 'nvim';
 const Neovim: FC<{
   isTerminalFocused: boolean;
-  fileContent: string;
-}> = ({ isTerminalFocused, fileContent }) => {
+}> = ({ isTerminalFocused }) => {
   const [editorState, setEditorState] = useState<EditorState>('loading');
 
   // to lazy to use a machine here / not worth
@@ -25,12 +24,7 @@ const Neovim: FC<{
   }
 
   if (editorState === 'nvim') {
-    return (
-      <Editor
-        fileContent={fileContent}
-        isTerminalFocused={isTerminalFocused}
-      />
-    );
+    return <Editor isTerminalFocused={isTerminalFocused} />;
   }
 
   return <></>;
